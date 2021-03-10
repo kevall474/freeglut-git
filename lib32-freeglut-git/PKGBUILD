@@ -1,0 +1,78 @@
+#_                   _ _ _  _ _____ _  _
+#| | _______   ____ _| | | || |___  | || |
+#| |/ / _ \ \ / / _` | | | || |_ / /| || |_
+#|   <  __/\ V / (_| | | |__   _/ / |__   _|
+#|_|\_\___| \_/ \__,_|_|_|  |_|/_/     |_|
+
+#Maintainer: kevall474 <kevall474@tuta.io> <https://github.com/kevall474>
+#Credits: Jan Alexander Steffens (heftig) <jan.steffens@gmail.com>
+#Credits: Eric Belanger <eric@archlinux.org>
+#Credits: Tom Newsom <Jeepster@gmx.co.uk>
+
+#######################################
+
+#Set '1' to build with GCC
+#Set '2' to build with CLANG
+#Default is empty. It will build with GCC. To build with different compiler just use : env _compiler=(1 or 2) makepkg -s
+if [ -z ${_compiler+x} ]; then
+  _compiler=
+fi
+
+#######################################
+
+pkgname=lib32-freeglut-git
+pkgdesc='Provides functionality for small OpenGL programs (32-bit) (git version)'
+pkgver=3.2.1.2021_03_09.2019.349a23dc
+pkgrel=1
+arch=('i686' 'x86_64')
+url='https://github.com/dcnieho/FreeGLUT'
+license=('MIT')
+makedepends=('mesa' 'glu' 'libxxf86vm' 'cmake' 'git' 'clang' 'llvm' 'llvm-libs' 'gcc' 'gcc-libs' 'libxi'
+             'lib32-mesa' 'lib32-glu' 'lib32-libxxf86vm' 'cmake' 'lib32-clang' 'lib32-llvm' 'lib32-llvm-libs'
+             'lib32-gcc-libs' 'subversion' 'libsasl' 'lib32-libxi')
+depends=('lib32-libxi' 'lib32-libxrandr' 'lib32-libgl' 'freeglut')
+replaces=('lib32-glut')
+provides=('lib32-glut' 'lib32-freeglut')
+conflicts=('lib32-glut' 'lib32-freeglut')
+source=('freeglut::git+https://github.com/dcnieho/FreeGLUT')
+sha512sums=('SKIP')
+
+pkgver(){
+  cd freeglut
+  echo 3.2.1.$(date -I | sed 's/-/_/' | sed 's/-/_/').$(git rev-list --count HEAD).$(git rev-parse --short HEAD)
+}
+
+build(){
+if [[ $_compiler = "1" ]]; then
+  export CC="gcc"
+  export CXX="g++"
+elif [[ $_compiler = "2" ]]; then
+  export CC="clang"
+  export CXX="clang++"
+else
+  export CC="gcc"
+  export CXX="g++"
+fi
+export PKG_CONFIG=/usr/bin/i686-pc-linux-gnu
+
+  cd "$srcdir"/freeglut/freeglut/freeglut/
+
+  rm -rf build_32
+
+  cmake -H. -G Ninja -Bbuild_32 \
+  -DCMAKE_C_FLAGS=-m32 \
+  -DCMAKE_CXX_FLAGS=-m32 \
+  -DFREEGLUT_BUILD_STATIC_LIBS=OFF \
+  -DCMAKE_INSTALL_PREFIX=/usr \
+  -DCMAKE_INSTALL_LIBDIR=/usr/lib32 \
+  -DCMAKE_BUILD_TYPE=None
+
+  ninja -j$(nproc) -C build_32/
+}
+
+package_lib32-freeglut-git(){
+  DESTDIR="$pkgdir/" ninja -C "$srcdir"/freeglut/freeglut/freeglut/build_32/ install
+  rm -rf "$pkgdir"/usr/include/
+  ln -sr "${pkgdir}"/usr/lib32/pkgconfig/{glut,freeglut}.pc
+  install -Dm644 "$srcdir"/freeglut/freeglut/freeglut/COPYING "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
